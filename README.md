@@ -92,7 +92,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 ## 🤖 Demo Screenshot
 
-![Demo screenshot](./demo-screenshot.png)  <!-- Add your screenshot here -->
+![Demo screenshot](https://github.com/mukund-ahire/AI-Interview-Question-Generator-using-Gemini/blob/4c8e27f2c1efca5b892a7abd8d5ebe5042396aa0/Screenshot%202025-08-10%20at%203.17.25%E2%80%AFPM.png)  <!-- Add your screenshot here -->
 
 ---
 

@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI Interview Question Generator</title>
+<style>
+  :root {
+    --bg: #0f1724;
+    --accent: #06b6d4;
+    --muted: #94a3b8;
+    color-scheme: dark;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    margin: 0;
+    background: radial-gradient(circle at top, #071027, #021022);
+    color: #e6eef8;
+    min-height: 100vh;
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 1000px;
+    width: 100%;
+    box-shadow: 0 6px 30px rgba(0,0,0,0.6);
+  }
+
+  h1 {
+    font-size: clamp(20px, 4vw, 28px);
+    background: linear-gradient(90deg, var(--accent), #00f5d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  label {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 12px;
+    display: block;
+  }
+
+  input, select, button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 6px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+  }
+
+  input, select {
+    background: rgba(255,255,255,0.05);
+    color: inherit;
+  }
+
+  button {
+    background: linear-gradient(90deg,var(--accent),#0ea5a9);
+    font-weight: 600;
+    color: #022;
+    cursor: pointer;
+    transition: 0.2s ease;
+  }
+
+  button:hover {
+    filter: brightness(1.1);
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .col {
+    flex: 1 1 100%;
+  }
+
+  @media (min-width: 600px) {
+    .col {
+      flex: 1;
+    }
+  }
+
+  #flashcards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .flashcard {
+    perspective: 1000px;
+    cursor: pointer;
+  }
+
+  .flashcard-inner {
+    position: relative;
+    width: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.6s;
+    will-change: transform;
+  }
+
+  .flashcard.flipped .flashcard-inner {
+    transform: rotateY(180deg);
+  }
+
+  .flashcard-front, .flashcard-back {
+    position: absolute;
+    width: 100%;
+    backface-visibility: hidden;
+    padding: 16px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.07);
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .flashcard-back {
+    transform: rotateY(180deg);
+    background: rgba(0,255,200,0.07);
+  }
+
+  .spinner {
+    margin: 20px auto;
+    border: 4px solid rgba(255,255,255,0.1);
+    border-left-color: var(--accent);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    animation: spin 0.9s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>AI Interview Question Generator</h1>
+    <p style="color:var(--muted)">Enter a role and level → get flashcard-style questions & answers using Gemini.</p>
+
+    <label for="role">Job role</label>
+    <input id="role" placeholder="Backend Engineer, Data Scientist..." />
+
+    <div class="row">
+      <div class="col">
+        <label for="level">Level</label>
+        <select id="level"><option>Junior</option><option>Mid</option><option>Senior</option></select>
+      </div>
+      <div class="col">
+        <label for="type">Type</label>
+        <select id="type">
+          <option value="mixed">Mixed</option>
+          <option value="technical">Technical</option>
+          <option value="behavioral">Behavioral</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="count">Number of questions</label>
+    <input id="count" type="number" min="1" max="12" value="8" />
+
+    <div class="row" style="margin-top:12px;">
+      <button id="generate">Generate</button>
+      <button id="copy" style="background:transparent;color:var(--accent);border:1px solid rgba(255,255,255,0.06)">Copy All</button>
+    </div>
+
+    <div id="loader" style="display:none;" class="spinner"></div>
+    <div id="flashcards" aria-live="polite"></div>
+  </div>
+
+<script>
+  const generateBtn = document.getElementById('generate');
+  const copyBtn = document.getElementById('copy');
+  const loader = document.getElementById('loader');
+  const flashcardsContainer = document.getElementById('flashcards');
+
+  generateBtn.addEventListener('click', async () => {
+    const role = document.getElementById('role').value.trim();
+    const level = document.getElementById('level').value;
+    const type = document.getElementById('type').value;
+    const count = Math.max(1, Math.min(12, Number(document.getElementById('count').value || 8)));
+
+    if (!role) { alert("Enter a job role."); return; }
+    
+    loader.style.display = "block";
+    flashcardsContainer.innerHTML = "";
+
+    try {
+      const resp = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ role, level, type, count })
+      });
+
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        throw new Error(errorText || resp.statusText);
+      }
+
+      const data = await resp.json();
+      loader.style.display = "none";
+
+      if (!Array.isArray(data.questions)) {
+        alert("Invalid data format from server.");
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      data.questions.forEach(({ question, answer }) => {
+        fragment.appendChild(createFlashcard(question, answer));
+      });
+      flashcardsContainer.appendChild(fragment);
+
+    } catch (err) {
+      loader.style.display = "none";
+      alert("Error: " + err.message);
+    }
+  });
+
+  function createFlashcard(q, a) {
+    const card = document.createElement('div');
+    card.className = 'flashcard';
+    card.innerHTML = `
+      <div class="flashcard-inner">
+        <div class="flashcard-front"><b>Q:</b> ${q}</div>
+        <div class="flashcard-back"><b>A:</b> ${a}</div>
+      </div>
+    `;
+    card.addEventListener('click', () => {
+      card.classList.toggle('flipped');
+    });
+    return card;
+  }
+
+  copyBtn.addEventListener('click', () => {
+    let all = "";
+    document.querySelectorAll('.flashcard').forEach(card => {
+      const q = card.querySelector('.flashcard-front').innerText;
+      const a = card.querySelector('.flashcard-back').innerText;
+      all += `${q}\n${a}\n\n`;
+    });
+    navigator.clipboard.writeText(all).then(() => {
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => copyBtn.textContent = 'Copy All', 1400);
+    });
+  });
+</script>
+</body>
+</html>
